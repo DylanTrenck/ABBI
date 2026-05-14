@@ -1,0 +1,12 @@
+is_brca2
+ref_len
+alt_len
+len_diff
+vtype_single_nucleotide_variant
+vtype_deletion
+vtype_insertion
+vtype_duplication
+vtype_microsatellite
+vtype_indel
+vtype_other_vtype
+pos_norm

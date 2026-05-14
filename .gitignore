@@ -1,0 +1,37 @@
+# Raw data and model checkpoints — not tracked
+data/raw/
+models/
+
+# Large derived files — regenerate with src/data/kmer.py
+data/processed/X_kmer.npy
+
+# Claude Code assistant files
+.claude/
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.egg-info/
+dist/
+build/
+.eggs/
+*.egg
+
+# Environments
+.env
+venv/
+.venv/
+env/
+*.conda/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Experiment tracking
+mlruns/
+wandb/
+
+# OS
+.DS_Store
+Thumbs.db

@@ -1,0 +1,4 @@
+timestamp,model,input,auc_roc,auprc,f1,sensitivity,specificity,train_size,val_size,notes
+2026-05-09 11:47,RandomForest,X_kmer,0.8633,0.9314,0.9415,0.9633,0.7024,4387,940,"sequence-only ceiling; kmer TF-IDF k=3,4,5"
+2026-05-09 11:47,XGBoost,X_clin,0.9985,0.9996,0.9891,0.9837,0.9805,4387,940,annotation-only ceiling; 21 ClinVar features
+2026-05-09 11:47,NaiveMLP,X_kmer+X_clin,0.9968,0.9992,0.9871,0.9864,0.9561,4387,940,naive concat fusion; no attention

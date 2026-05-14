@@ -1,0 +1,958 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Attention-Based BRCA Interpreter — Project Roadmap</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500&display=swap');
+
+  :root {
+    --bg: #0a0e1a;
+    --surface: #111827;
+    --surface2: #1a2235;
+    --border: #1e2d45;
+    --accent: #00d4aa;
+    --accent2: #ff6b9d;
+    --accent3: #7c6aff;
+    --text: #e8edf5;
+    --muted: #6b7a99;
+    --phase1: #00d4aa;
+    --phase2: #7c6aff;
+    --phase3: #ff9f43;
+    --phase4: #ff6b9d;
+    --phase5: #54c6eb;
+    --phase6: #a8e063;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Noise texture overlay */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .grid-bg {
+    position: fixed;
+    inset: 0;
+    background-image: 
+      linear-gradient(rgba(0,212,170,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,212,170,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 60px 24px 80px;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* Header */
+  .header {
+    margin-bottom: 64px;
+    animation: fadeDown 0.8s ease both;
+  }
+
+  .header-tag {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .header-tag::before {
+    content: '';
+    display: inline-block;
+    width: 24px;
+    height: 1px;
+    background: var(--accent);
+  }
+
+  h1 {
+    font-family: 'DM Serif Display', serif;
+    font-size: clamp(32px, 6vw, 52px);
+    line-height: 1.1;
+    margin-bottom: 16px;
+    background: linear-gradient(135deg, #e8edf5 0%, #a0b4d6 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  h1 em {
+    font-style: italic;
+    background: linear-gradient(135deg, var(--accent) 0%, var(--accent3) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .subtitle {
+    font-size: 16px;
+    color: var(--muted);
+    font-weight: 300;
+    max-width: 560px;
+    line-height: 1.7;
+  }
+
+  /* Stats bar */
+  .stats-bar {
+    display: flex;
+    gap: 32px;
+    margin-top: 36px;
+    padding-top: 36px;
+    border-top: 1px solid var(--border);
+    flex-wrap: wrap;
+    animation: fadeUp 0.8s 0.2s ease both;
+  }
+
+  .stat {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .stat-value {
+    font-family: 'Space Mono', monospace;
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--accent);
+  }
+
+  .stat-label {
+    font-size: 12px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+
+  /* Progress tracker */
+  .progress-track {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px 28px;
+    margin-bottom: 48px;
+    animation: fadeUp 0.8s 0.3s ease both;
+  }
+
+  .progress-label {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    margin-bottom: 14px;
+  }
+
+  .progress-phases {
+    display: flex;
+    gap: 4px;
+  }
+
+  .progress-segment {
+    height: 6px;
+    flex: 1;
+    border-radius: 3px;
+    background: var(--border);
+    cursor: pointer;
+    transition: transform 0.2s ease;
+  }
+
+  .progress-segment:hover { transform: scaleY(1.5); }
+  .progress-segment[data-phase="1"] { background: var(--phase1); }
+  .progress-segment[data-phase="2"] { background: var(--phase2); }
+  .progress-segment[data-phase="3"] { background: var(--phase3); }
+  .progress-segment[data-phase="4"] { background: var(--phase4); }
+  .progress-segment[data-phase="5"] { background: var(--phase5); }
+  .progress-segment[data-phase="6"] { background: var(--phase6); }
+
+  /* Phase cards */
+  .phase {
+    margin-bottom: 24px;
+    animation: fadeUp 0.6s ease both;
+  }
+
+  .phase:nth-child(1) { animation-delay: 0.1s; }
+  .phase:nth-child(2) { animation-delay: 0.2s; }
+  .phase:nth-child(3) { animation-delay: 0.3s; }
+  .phase:nth-child(4) { animation-delay: 0.4s; }
+  .phase:nth-child(5) { animation-delay: 0.5s; }
+  .phase:nth-child(6) { animation-delay: 0.6s; }
+
+  .phase-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 20px 24px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px 12px 0 0;
+    cursor: pointer;
+    transition: background 0.2s ease;
+    user-select: none;
+  }
+
+  .phase-header:hover { background: var(--surface2); }
+
+  .phase-num {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 4px 10px;
+    border-radius: 20px;
+    letter-spacing: 0.1em;
+    white-space: nowrap;
+  }
+
+  .phase[data-n="1"] .phase-num { background: rgba(0,212,170,0.15); color: var(--phase1); border: 1px solid rgba(0,212,170,0.3); }
+  .phase[data-n="2"] .phase-num { background: rgba(124,106,255,0.15); color: var(--phase2); border: 1px solid rgba(124,106,255,0.3); }
+  .phase[data-n="3"] .phase-num { background: rgba(255,159,67,0.15); color: var(--phase3); border: 1px solid rgba(255,159,67,0.3); }
+  .phase[data-n="4"] .phase-num { background: rgba(255,107,157,0.15); color: var(--phase4); border: 1px solid rgba(255,107,157,0.3); }
+  .phase[data-n="5"] .phase-num { background: rgba(84,198,235,0.15); color: var(--phase5); border: 1px solid rgba(84,198,235,0.3); }
+  .phase[data-n="6"] .phase-num { background: rgba(168,224,99,0.15); color: var(--phase6); border: 1px solid rgba(168,224,99,0.3); }
+
+  .phase-title {
+    flex: 1;
+  }
+
+  .phase-title h2 {
+    font-family: 'DM Serif Display', serif;
+    font-size: 20px;
+    font-weight: 400;
+    color: var(--text);
+    line-height: 1.2;
+  }
+
+  .phase-title .phase-sub {
+    font-size: 13px;
+    color: var(--muted);
+    margin-top: 2px;
+  }
+
+  .phase-meta {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 4px;
+  }
+
+  .phase-time {
+    font-family: 'Space Mono', monospace;
+    font-size: 12px;
+    color: var(--muted);
+    white-space: nowrap;
+  }
+
+  .phase-toggle {
+    font-size: 18px;
+    color: var(--muted);
+    transition: transform 0.3s ease;
+    line-height: 1;
+  }
+
+  .phase.open .phase-toggle { transform: rotate(180deg); }
+
+  /* Phase body */
+  .phase-body {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-top: none;
+    border-radius: 0 0 12px 12px;
+    overflow: hidden;
+    max-height: 0;
+    transition: max-height 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .phase.open .phase-body { max-height: 2000px; }
+
+  .phase-inner {
+    padding: 28px 28px 32px;
+  }
+
+  .phase-goal {
+    font-size: 14px;
+    color: var(--muted);
+    line-height: 1.7;
+    margin-bottom: 28px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--border);
+    font-style: italic;
+  }
+
+  /* Steps */
+  .steps { display: flex; flex-direction: column; gap: 0; }
+
+  .step {
+    display: flex;
+    gap: 16px;
+    padding: 16px 0;
+    border-bottom: 1px solid rgba(30,45,69,0.5);
+  }
+
+  .step:last-child { border-bottom: none; padding-bottom: 0; }
+  .step:first-child { padding-top: 0; }
+
+  .step-dot {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    border: 2px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    margin-top: 2px;
+    transition: all 0.2s ease;
+  }
+
+  .step-dot-inner {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--muted);
+  }
+
+  .phase[data-n="1"] .step-dot { border-color: rgba(0,212,170,0.4); }
+  .phase[data-n="1"] .step-dot-inner { background: var(--phase1); }
+  .phase[data-n="2"] .step-dot { border-color: rgba(124,106,255,0.4); }
+  .phase[data-n="2"] .step-dot-inner { background: var(--phase2); }
+  .phase[data-n="3"] .step-dot { border-color: rgba(255,159,67,0.4); }
+  .phase[data-n="3"] .step-dot-inner { background: var(--phase3); }
+  .phase[data-n="4"] .step-dot { border-color: rgba(255,107,157,0.4); }
+  .phase[data-n="4"] .step-dot-inner { background: var(--phase4); }
+  .phase[data-n="5"] .step-dot { border-color: rgba(84,198,235,0.4); }
+  .phase[data-n="5"] .step-dot-inner { background: var(--phase5); }
+  .phase[data-n="6"] .step-dot { border-color: rgba(168,224,99,0.4); }
+  .phase[data-n="6"] .step-dot-inner { background: var(--phase6); }
+
+  .step-content { flex: 1; }
+
+  .step-title {
+    font-size: 15px;
+    font-weight: 500;
+    color: var(--text);
+    margin-bottom: 6px;
+    line-height: 1.3;
+  }
+
+  .step-desc {
+    font-size: 13px;
+    color: var(--muted);
+    line-height: 1.65;
+  }
+
+  /* Code snippets */
+  .code-block {
+    background: #070c14;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px 16px;
+    margin-top: 10px;
+    font-family: 'Space Mono', monospace;
+    font-size: 12px;
+    color: #a8d8a8;
+    overflow-x: auto;
+    line-height: 1.6;
+  }
+
+  .code-block .comment { color: #4a6a8a; }
+  .code-block .keyword { color: #7c6aff; }
+  .code-block .string { color: #ff9f43; }
+
+  /* Tags */
+  .tag-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border);
+  }
+
+  .tag {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    padding: 4px 10px;
+    border-radius: 4px;
+    letter-spacing: 0.05em;
+    background: var(--surface2);
+    color: var(--muted);
+    border: 1px solid var(--border);
+  }
+
+  /* Checkpoint box */
+  .checkpoint {
+    margin-top: 20px;
+    padding: 14px 18px;
+    border-radius: 8px;
+    font-size: 13px;
+    line-height: 1.6;
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+  }
+
+  .checkpoint-icon { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+
+  .phase[data-n="1"] .checkpoint { background: rgba(0,212,170,0.07); border: 1px solid rgba(0,212,170,0.2); color: #7de8d0; }
+  .phase[data-n="2"] .checkpoint { background: rgba(124,106,255,0.07); border: 1px solid rgba(124,106,255,0.2); color: #b3aaff; }
+  .phase[data-n="3"] .checkpoint { background: rgba(255,159,67,0.07); border: 1px solid rgba(255,159,67,0.2); color: #ffd09a; }
+  .phase[data-n="4"] .checkpoint { background: rgba(255,107,157,0.07); border: 1px solid rgba(255,107,157,0.2); color: #ffb3cf; }
+  .phase[data-n="5"] .checkpoint { background: rgba(84,198,235,0.07); border: 1px solid rgba(84,198,235,0.2); color: #a8e4f5; }
+  .phase[data-n="6"] .checkpoint { background: rgba(168,224,99,0.07); border: 1px solid rgba(168,224,99,0.2); color: #cef09a; }
+
+  /* Footer note */
+  .footer-note {
+    margin-top: 56px;
+    padding: 28px 32px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    display: flex;
+    gap: 20px;
+    align-items: flex-start;
+    animation: fadeUp 0.8s 0.8s ease both;
+  }
+
+  .footer-note-icon {
+    font-size: 24px;
+    flex-shrink: 0;
+  }
+
+  .footer-note h3 {
+    font-family: 'DM Serif Display', serif;
+    font-size: 18px;
+    font-weight: 400;
+    margin-bottom: 8px;
+  }
+
+  .footer-note p {
+    font-size: 14px;
+    color: var(--muted);
+    line-height: 1.7;
+  }
+
+  @keyframes fadeDown {
+    from { opacity: 0; transform: translateY(-20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  @media (max-width: 600px) {
+    .stats-bar { gap: 20px; }
+    .phase-header { flex-wrap: wrap; }
+    .phase-meta { flex-direction: row; align-items: center; }
+  }
+</style>
+</head>
+<body>
+<div class="grid-bg"></div>
+<div class="container">
+
+  <div class="header">
+    <div class="header-tag">Research Project Roadmap</div>
+    <h1>Multimodal <em>BRCA</em><br>Mutation Predictor</h1>
+    <p class="subtitle">A step-by-step engineering guide to building an AI model that predicts BRCA1/2 mutations using DNA sequence embeddings + clinical features, with SHAP explainability.</p>
+    <div class="stats-bar">
+      <div class="stat"><span class="stat-value">6</span><span class="stat-label">Phases</span></div>
+      <div class="stat"><span class="stat-value">~9wks</span><span class="stat-label">Est. Duration</span></div>
+      <div class="stat"><span class="stat-value">3</span><span class="stat-label">Public Datasets</span></div>
+      <div class="stat"><span class="stat-value">arXiv</span><span class="stat-label">Target Output</span></div>
+    </div>
+  </div>
+
+  <div class="progress-track">
+    <div class="progress-label">// Phase overview — tap to jump</div>
+    <div class="progress-phases" id="progressPhases">
+      <div class="progress-segment" data-phase="1" onclick="togglePhase(1)" title="Phase 1"></div>
+      <div class="progress-segment" data-phase="2" onclick="togglePhase(2)" title="Phase 2"></div>
+      <div class="progress-segment" data-phase="3" onclick="togglePhase(3)" title="Phase 3"></div>
+      <div class="progress-segment" data-phase="4" onclick="togglePhase(4)" title="Phase 4"></div>
+      <div class="progress-segment" data-phase="5" onclick="togglePhase(5)" title="Phase 5"></div>
+      <div class="progress-segment" data-phase="6" onclick="togglePhase(6)" title="Phase 6"></div>
+    </div>
+  </div>
+
+  <!-- PHASE 1 -->
+  <div class="phase" data-n="1" id="phase-1">
+    <div class="phase-header" onclick="togglePhase(1)">
+      <span class="phase-num">PHASE 01</span>
+      <div class="phase-title">
+        <h2>Environment & Dataset Setup</h2>
+        <div class="phase-sub">Get your tools and data ready before writing a line of model code</div>
+      </div>
+      <div class="phase-meta">
+        <span class="phase-time">~1 week</span>
+        <span class="phase-toggle">▾</span>
+      </div>
+    </div>
+    <div class="phase-body">
+      <div class="phase-inner">
+        <p class="phase-goal">Goal: Have a clean, reproducible project structure with all three datasets downloaded, understood, and committed to version control.</p>
+        <div class="steps">
+          <div class="step">
+            <div class="step-dot"><div class="step-dot-inner"></div></div>
+            <div class="step-content">
+              <div class="step-title">1.1 — Set up your Python environment</div>
+              <div class="step-desc">Create a virtual environment and install core dependencies. Use Python 3.10+. Pin all package versions in a requirements.txt from the start — this saves pain later when sharing or submitting.</div>
+              <div class="code-block"><span class="comment"># Terminal</span>
+python -m venv brca-env
+source brca-env/bin/activate
+pip install torch scikit-learn pandas numpy biopython shap matplotlib seaborn jupyter</div>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-dot"><div class="step-dot-inner"></div></div>
+            <div class="step-content">
+              <div class="step-title">1.2 — Download ClinVar BRCA variants</div>
+              <div class="step-desc">Go to ncbi.nlm.nih.gov/clinvar and filter by gene: BRCA1 and BRCA2. Download the VCF or TSV file. You want the "clinical significance" column — this is your label (Pathogenic vs. Benign/Likely Benign). Expect ~20,000–50,000 labeled variants.</div>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-dot"><div class="step-dot-inner"></div></div>
+            <div class="step-content">
+              <div class="step-title">1.3 — Access TCGA-BRCA clinical data</div>
+              <div class="step-desc">Register at the GDC portal (portal.gdc.cancer.gov). Download the TCGA-BRCA clinical manifest. You want: age at diagnosis, tumor stage, ER/PR/HER2 status, family history flags, and mutation annotations. Use the GDC client tool for bulk download.</div>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-dot"><div class="step-dot-inner"></div></div>
+            <div class="step-content">
+              <div class="step-title">1.4 — Pull reference BRCA sequences from NCBI</div>
+              <div class="step-desc">Use Biopython's Entrez module to fetch the canonical BRCA1 and BRCA2 mRNA/coding sequences. These become your reference for constructing variant sequences in Phase 2.</div>
+              <div class="code-block"><span class="keyword">from</span> Bio <span class="keyword">import</span> Entrez, SeqIO
+Entrez.email = <span class="string">"your@email.com"</span>
+handle = Entrez.efetch(db=<span class="string">"nucleotide"</span>, id=<span class="string">"NM_007294"</span>, rettype=<span class="string">"gb"</span>)
+<span class="comment"># NM_007294 = BRCA1, NM_000059 = BRCA2</span></div>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-dot"><div class="step-dot-inner"></div></div>
+            <div class="step-content">
+              <div class="step-title">1.5 — Create a structured project repo</div>
+              <div class="step-desc">Initialize a GitHub repo with folders: /data/raw, /data/processed, /notebooks, /src, /models, /results. Add a .gitignore for large data files. Write a README.md now — even just a skeleton. This discipline pays off.</div>
+            </div>
+          </div>
+        </div>
+        <div class="checkpoint">
+          <span class="checkpoint-icon">✓</span>
+          <span><strong>Phase 1 checkpoint:</strong> You can load all three data sources into a Jupyter notebook and print their shape/columns. Your repo is on GitHub with a clean folder structure.</span>
+        </div>
+        <div class="tag-row">
+          <span class="tag">Python 3.10+</span>
+          <span class="tag">Biopython</span>
+          <span class="tag">ClinVar</span>
+          <span class="tag">TCGA-BRCA</span>
+          <span class="tag">NCBI Entrez</span>
+          <span class="tag">GDC Portal</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PHASE 2 -->
+  <div class="phase" data-n="2" id="phase-2">
+    <div class="phase-header" onclick="togglePhase(2)">
+      <span class="phase-num">PHASE 02</span>
+      <div class="phase-title">
+        <h2>Feature Engineering</h2>
+        <div class="phase-sub">Convert raw DNA sequences and clinical records into model-ready tensors</div>
+      </div>
+      <div class="phase-meta">
+        <span class="phase-time">~1.5 weeks</span>
+        <span class="phase-toggle">▾</span>
+      </div>
+    </div>
+    <div class="phase-body">
+      <div class="phase-inner">
+        <p class="phase-goal">Goal: Produce two clean feature matrices — one for sequence embeddings, one for clinical features — that can be merged on patient/variant IDs.</p>
+        <div class="steps">
+          <div class="step">
+            <div class="step-dot"><div class="step-dot-inner"></div></div>
+            <div class="step-content">
+              <div class="step-title">2.1 — Build k-mer frequency embeddings from variant sequences</div>
+              <div class="step-desc">For each variant in ClinVar, reconstruct the local sequence context (~100bp window around the mutation position). Slide a window of k=3,4,5 over the sequence and count each k-mer. This gives you a fixed-length vector per variant without needing alignment. Normalize using TF-IDF style weighting.</div>
+              <div class="code-block"><span class="keyword">from</span> collections <span class="keyword">import</span> Counter
+<span class="keyword">def</span> kmer_freqs(seq, k=4):
+    kmers = [seq[i:i+k] <span class="keyword">for</span> i <span class="keyword">in</span> range(len(seq)-k+1)]
+    counts = Counter(kmers)
+    <span class="keyword">return</span> counts  <span class="comment"># normalize after</span></div>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-dot"><div class="step-dot-inner"></div></div>
+            <div class="step-content">
+              <div class="step-title">2.2 — Encode mutation type features</div>
+              <div class="step-desc">Beyond k-mers, extract explicit mutation-level features: variant type (SNV, insertion, deletion, frameshift), position in the gene (exon number, distance from splice site), GC content of the surrounding region, and conservation score if available. These are cheap to compute and highly informative.</div>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-dot"><div class="step-dot-inner"></div></div>
+            <div class="step-content">
+              <div class="step-title">2.3 — Process clinical tabular features</div>
+              <div class="step-desc">From TCGA-BRCA: select age, tumor grade (I–III), ER/PR/HER2 status (one-hot), and any BRCA family history flag. Handle missing values with median imputation for continuous features, and "unknown" category for categorical. Standardize continuous features with StandardScaler.</div>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-dot"><div class="step-dot-inner"></div></div>
+            <div class="step-content">
+              <div class="step-title">2.4 — Merge datasets and define train/val/test splits</div>
+              <div class="step-desc">Join sequence features and clinical features on shared identifiers. Use an 70/15/15 stratified split, stratifying on the pathogenicity label to ensure balanced classes in each split. Save the splits to disk so they're fixed and reproducible — do not re-split during training.</div>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-dot"><div class="step-dot-inner"></div></div>
+            <div class="step-content">
+              <div class="step-title">2.5 — Exploratory data analysis</div>
+              <div class="step-desc">Before modeling, spend time here. Plot class balance (pathogenic vs benign). Visualize top k-mers by class using bar charts. Create a correlation heatmap of clinical features. Check for data leakage vectors. Document your findings in a notebook — this section often becomes the Methods section of a paper.</div>
+            </div>
+          </div>
+        </div>
+        <div class="checkpoint">
+          <span class="checkpoint-icon">✓</span>
+          <span><strong>Phase 2 checkpoint:</strong> You have X_seq, X_clinical, and y arrays saved as .npy files with confirmed train/val/test splits. EDA notebook is clean and committed.</span>
+        </div>
+        <div class="tag-row">
+          <span class="tag">k-mer embeddings</span>
+          <span class="tag">Feature engineering</span>
+          <span class="tag">Pandas</span>
+          <span class="tag">StandardScaler</span>
+          <span class="tag">Stratified split</span>
+          <span class="tag">EDA</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PHASE 3 -->
+  <div class="phase" data-n="3" id="phase-3">
+    <div class="phase-header" onclick="togglePhase(3)">
+      <span class="phase-num">PHASE 03</span>
+      <div class="phase-title">
+        <h2>Baseline Models</h2>
+        <div class="phase-sub">Establish strong baselines before building the fusion architecture</div>
+      </div>
+      <div class="phase-meta">
+        <span class="phase-time">~1 week</span>
+        <span class="phase-toggle">▾</span>
+      </div>
+    </div>
+    <div class="phase-body">
+      <div class="phase-inner">
+        <p class="phase-goal">Goal: Measure how well sequence-only and clinical-only models perform separately. This sets the bar your fusion model must beat — and is essential for any paper.</p>
+        <div class="steps">
+          <div class="step">
+            <div class="step-dot"><div class="step-dot-inner"></div></div>
+            <div class="step-content">
+              <div class="step-title">3.1 — Train a sequence-only baseline (Random Forest)</div>
+              <div class="step-desc">Feed only the k-mer frequency vectors into a Random Forest classifier. Tune n_estimators and max_depth with cross-validation. This is your sequence-only ceiling. Record AUC-ROC, precision, recall, and F1 on the validation set.</div>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-dot"><div class="step-dot-inner"></div></div>
+            <div class="step-content">
+              <div class="step-title">3.2 — Train a clinical-only baseline (XGBoost)</div>
+              <div class="step-desc">Use only the clinical tabular features with XGBoost. XGBoost handles missing values natively and typically outperforms RF on tabular data. Tune learning_rate, max_depth, and n_estimators. Log all metrics identically to 3.1.</div>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-dot"><div class="step-dot-inner"></div></div>
+            <div class="step-content">
+              <div class="step-title">3.3 — Simple concatenation baseline (neural net)</div>
+              <div class="step-desc">Concatenate X_seq and X_clinical into one flat vector and train a 2-layer MLP. This is the naive fusion approach — your final model should beat this by using a proper fusion architecture rather than just concatenation.</div>
+              <div class="code-block"><span class="comment"># Simple MLP baseline</span>
+model = nn.Sequential(
+    nn.Linear(seq_dim + clin_dim, 256),
+    nn.ReLU(), nn.Dropout(0.3),
+    nn.Linear(256, 64), nn.ReLU(),
+    nn.Linear(64, 1), nn.Sigmoid()
+)</div>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-dot"><div class="step-dot-inner"></div></div>
+            <div class="step-content">
+              <div class="step-title">3.4 — Build a results tracking table</div>
+              <div class="step-desc">Create a spreadsheet (or use MLflow/Weights & Biases if you want to be rigorous) logging each model, its hyperparameters, and val set metrics. Every future run goes in here. This table becomes Table 1 in your paper.</div>
+            </div>
+          </div>
+        </div>
+        <div class="checkpoint">
+          <span class="checkpoint-icon">✓</span>
+          <span><strong>Phase 3 checkpoint:</strong> You have 3 baseline models with recorded AUC-ROC scores. You know which input modality is more predictive on its own.</span>
+        </div>
+        <div class="tag-row">
+          <span class="tag">Random Forest</span>
+          <span class="tag">XGBoost</span>
+          <span class="tag">MLP</span>
+          <span class="tag">AUC-ROC</span>
+          <span class="tag">PyTorch</span>
+          <span class="tag">MLflow</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PHASE 4 -->
+  <div class="phase" data-n="4" id="phase-4">
+    <div class="phase-header" onclick="togglePhase(4)">
+      <span class="phase-num">PHASE 04</span>
+      <div class="phase-title">
+        <h2>Fusion Model Architecture</h2>
+        <div class="phase-sub">Build the multimodal model that is the core contribution</div>
+      </div>
+      <div class="phase-meta">
+        <span class="phase-time">~2 weeks</span>
+        <span class="phase-toggle">▾</span>
+      </div>
+    </div>
+    <div class="phase-body">
+      <div class="phase-inner">
+        <p class="phase-goal">Goal: Design and train a model with separate encoders for each modality that fuses representations via a learned attention mechanism — not just concatenation.</p>
+        <div class="steps">
+          <div class="step">
+            <div class="step-dot"><div class="step-dot-inner"></div></div>
+            <div class="step-content">
+              <div class="step-title">4.1 — Build the sequence encoder branch</div>
+              <div class="step-desc">Design a small 1D-CNN or MLP that takes the k-mer vector and outputs a 128-dim embedding. The key is that this branch learns a compact representation of the sequence context before fusion, rather than dumping raw features into a combined layer.</div>
+              <div class="code-block"><span class="keyword">class</span> SeqEncoder(nn.Module):
+    <span class="keyword">def</span> __init__(self, input_dim):
+        super().__init__()
+        self.net = nn.Sequential(
+            nn.Linear(input_dim, 256), nn.GELU(),
+            nn.LayerNorm(256), nn.Dropout(0.2),
+            nn.Linear(256, 128)  <span class="comment"># 128-dim embedding</span>
+        )</div>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-dot"><div class="step-dot-inner"></div></div>
+            <div class="step-content">
+              <div class="step-title">4.2 — Build the clinical encoder branch</div>
+              <div class="step-desc">Similarly, build a separate MLP encoder for clinical features that also outputs a 128-dim embedding. Using the same output dimension makes the fusion step symmetric and cleaner. Add batch normalization since clinical features have very different scales.</div>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-dot"><div class="step-dot-inner"></div></div>
+            <div class="step-content">
+              <div class="step-title">4.3 — Design the cross-modal fusion layer</div>
+              <div class="step-desc">This is the novel part. Instead of concatenating, use a cross-attention mechanism: let the clinical embedding "attend" to the sequence embedding and vice versa. Stack both into a 2-token sequence and apply a single transformer attention head. The model learns which modality to trust more per sample.</div>
+              <div class="code-block"><span class="comment"># Stack embeddings as 2 tokens, apply attention</span>
+tokens = torch.stack([seq_emb, clin_emb], dim=1)  <span class="comment"># [B, 2, 128]</span>
+attended = self.attn(tokens, tokens, tokens)       <span class="comment"># self-attention</span>
+fused = attended.mean(dim=1)                       <span class="comment"># [B, 128]</span></div>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-dot"><div class="step-dot-inner"></div></div>
+            <div class="step-content">
+              <div class="step-title">4.4 — Add the classification head and train</div>
+              <div class="step-desc">Pass the fused 128-dim vector through a 2-layer MLP to a sigmoid output. Train with BCELoss, AdamW optimizer, and a cosine learning rate scheduler. Use early stopping on val AUC with patience=10. Address class imbalance using pos_weight in BCELoss.</div>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-dot"><div class="step-dot-inner"></div></div>
+            <div class="step-content">
+              <div class="step-title">4.5 — Ablation study</div>
+              <div class="step-desc">Train three variants: seq-only encoder, clinical-only encoder, and full fusion. This directly proves the value of multimodal fusion and gives you a clean narrative: each modality alone is weaker, together they're stronger. Essential for any submission.</div>
+            </div>
+          </div>
+        </div>
+        <div class="checkpoint">
+          <span class="checkpoint-icon">✓</span>
+          <span><strong>Phase 4 checkpoint:</strong> Your fusion model beats all three Phase 3 baselines on validation AUC-ROC. Ablation table shows the value of each modality. Model is saved to disk.</span>
+        </div>
+        <div class="tag-row">
+          <span class="tag">Cross-attention</span>
+          <span class="tag">Multimodal fusion</span>
+          <span class="tag">PyTorch</span>
+          <span class="tag">AdamW</span>
+          <span class="tag">Ablation study</span>
+          <span class="tag">BCELoss</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PHASE 5 -->
+  <div class="phase" data-n="5" id="phase-5">
+    <div class="phase-header" onclick="togglePhase(5)">
+      <span class="phase-num">PHASE 05</span>
+      <div class="phase-title">
+        <h2>Explainability Layer</h2>
+        <div class="phase-sub">Make the model interpretable — the part most papers skip</div>
+      </div>
+      <div class="phase-meta">
+        <span class="phase-time">~1.5 weeks</span>
+        <span class="phase-toggle">▾</span>
+      </div>
+    </div>
+    <div class="phase-body">
+      <div class="phase-inner">
+        <p class="phase-goal">Goal: Produce per-patient and global explanations that show which features (specific k-mers, clinical variables, mutation positions) drove each prediction.</p>
+        <div class="steps">
+          <div class="step">
+            <div class="step-dot"><div class="step-dot-inner"></div></div>
+            <div class="step-content">
+              <div class="step-title">5.1 — Apply SHAP DeepExplainer to the fusion model</div>
+              <div class="step-desc">Use SHAP's DeepExplainer (designed for PyTorch networks) on your test set. This assigns each input feature a SHAP value — its marginal contribution to the prediction. Run it on a background dataset of ~100 samples for efficiency on your laptop/GPU.</div>
+              <div class="code-block"><span class="keyword">import</span> shap
+explainer = shap.DeepExplainer(model, background_data)
+shap_values = explainer.shap_values(X_test)</div>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-dot"><div class="step-dot-inner"></div></div>
+            <div class="step-content">
+              <div class="step-title">5.2 — Global feature importance: top k-mers and clinical features</div>
+              <div class="step-desc">Plot mean absolute SHAP values across all test samples for both modalities. Which k-mer sequences most strongly predict pathogenicity? Which clinical features dominate? This is a publishable figure — you may find biologically meaningful patterns, e.g., specific trinucleotide contexts.</div>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-dot"><div class="step-dot-inner"></div></div>
+            <div class="step-content">
+              <div class="step-title">5.3 — Per-patient explanation waterfall plots</div>
+              <div class="step-desc">Generate waterfall plots for 3–5 representative patients: one true positive, one true negative, one false positive. Show visually why the model made each call. This builds trust and is extremely valuable for any clinical audience reading your paper.</div>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-dot"><div class="step-dot-inner"></div></div>
+            <div class="step-content">
+              <div class="step-title">5.4 — Visualize attention weights from the fusion layer</div>
+              <div class="step-desc">For each test sample, extract the cross-attention weights. Plot the distribution: when does the model rely more on sequence vs clinical features? If BRCA1 variants show higher sequence attention than BRCA2 variants, that's a novel biological finding worth discussing.</div>
+            </div>
+          </div>
+        </div>
+        <div class="checkpoint">
+          <span class="checkpoint-icon">✓</span>
+          <span><strong>Phase 5 checkpoint:</strong> You have a global SHAP summary plot, 3 waterfall plots, and an attention weight analysis. These become Figures 2–4 in your paper.</span>
+        </div>
+        <div class="tag-row">
+          <span class="tag">SHAP</span>
+          <span class="tag">DeepExplainer</span>
+          <span class="tag">Attention weights</span>
+          <span class="tag">Interpretability</span>
+          <span class="tag">Waterfall plots</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PHASE 6 -->
+  <div class="phase" data-n="6" id="phase-6">
+    <div class="phase-header" onclick="togglePhase(6)">
+      <span class="phase-num">PHASE 06</span>
+      <div class="phase-title">
+        <h2>Evaluation, Write-up & Publication</h2>
+        <div class="phase-sub">Finalize results, write the paper, and share your work</div>
+      </div>
+      <div class="phase-meta">
+        <span class="phase-time">~2 weeks</span>
+        <span class="phase-toggle">▾</span>
+      </div>
+    </div>
+    <div class="phase-body">
+      <div class="phase-inner">
+        <p class="phase-goal">Goal: Produce a clean, reproducible codebase and a paper-ready write-up for arXiv or a bioinformatics journal submission.</p>
+        <div class="steps">
+          <div class="step">
+            <div class="step-dot"><div class="step-dot-inner"></div></div>
+            <div class="step-content">
+              <div class="step-title">6.1 — Final evaluation on held-out test set</div>
+              <div class="step-desc">Run your best fusion model on the test set exactly once. Report AUC-ROC, AUPRC (area under precision-recall curve — more informative for imbalanced data), F1, sensitivity, and specificity. Run bootstrap resampling (n=1000) to get 95% confidence intervals on all metrics.</div>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-dot"><div class="step-dot-inner"></div></div>
+            <div class="step-content">
+              <div class="step-title">6.2 — Stretch goal: fine-tune ESM-2 sequence encoder</div>
+              <div class="step-desc">If time allows, swap your k-mer encoder for Meta's ESM-2 protein language model (available on HuggingFace). Fine-tune the last 2 layers on your BRCA variant sequences. This typically boosts sequence representation quality significantly and makes the project more publishable at top venues.</div>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-dot"><div class="step-dot-inner"></div></div>
+            <div class="step-content">
+              <div class="step-title">6.3 — Clean and document the codebase</div>
+              <div class="step-desc">Add docstrings, a detailed README with setup instructions, a data download script, and a single train.py entry point. The goal: a stranger should be able to clone and reproduce your results in under an hour. This dramatically increases citations if you publish.</div>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-dot"><div class="step-dot-inner"></div></div>
+            <div class="step-content">
+              <div class="step-title">6.4 — Write the paper (or technical report)</div>
+              <div class="step-desc">Target arXiv first, then consider Bioinformatics (Oxford), PLOS Computational Biology, or Briefings in Bioinformatics. Structure: Abstract → Introduction → Related Work → Methods → Results → Discussion → Conclusion. Your ablation table, SHAP plots, and attention analysis are ready-made figures.</div>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-dot"><div class="step-dot-inner"></div></div>
+            <div class="step-content">
+              <div class="step-title">6.5 — Release and share</div>
+              <div class="step-desc">Post to arXiv, share the GitHub repo publicly, and post a summary thread on X/Twitter or LinkedIn tagging relevant ML and genomics communities. Consider submitting a demo to Hugging Face Spaces. Projects that are easy to find and run get cited; dark repos don't.</div>
+            </div>
+          </div>
+        </div>
+        <div class="checkpoint">
+          <span class="checkpoint-icon">✓</span>
+          <span><strong>Phase 6 checkpoint:</strong> arXiv preprint is live, GitHub repo is public with a star-worthy README, and you have a complete results table with confidence intervals.</span>
+        </div>
+        <div class="tag-row">
+          <span class="tag">AUPRC</span>
+          <span class="tag">Bootstrap CI</span>
+          <span class="tag">ESM-2</span>
+          <span class="tag">arXiv</span>
+          <span class="tag">HuggingFace</span>
+          <span class="tag">Reproducibility</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer-note">
+    <span class="footer-note-icon">🧬</span>
+    <div>
+      <h3>One more tip</h3>
+      <p>The most publishable finding here won't just be "our model is more accurate." It'll be what the SHAP and attention analysis reveals biologically — e.g., which k-mer contexts or clinical combinations are most predictive of pathogenicity. Let the explainability drive the narrative, not just the benchmark numbers.</p>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  function togglePhase(n) {
+    const el = document.getElementById('phase-' + n);
+    el.classList.toggle('open');
+  }
+  // Open phase 1 by default
+  document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('phase-1').classList.add('open');
+  });
+</script>
+</body>
+</html>

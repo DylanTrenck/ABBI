@@ -166,10 +166,11 @@ def collect_predictions(model: nn.Module, loader: DataLoader,
 
 
 def evaluate_abbi(sequences, x_clin, y, test_idx, device,
-                  feature_set: str = "full") -> tuple[dict, dict]:
-    print(f"\n[1/2] Evaluating ABBI ({feature_set} features)...")
+                  feature_set: str = "full",
+                  finetune_tag: str = "partial") -> tuple[dict, dict]:
+    print(f"\n[1/2] Evaluating ABBI ({feature_set} features, {finetune_tag})...")
 
-    ckpt_path = MODELS_DIR / f"abbi_best_{feature_set}.pt"
+    ckpt_path = MODELS_DIR / f"abbi_best_{feature_set}_{finetune_tag}.pt"
     if not ckpt_path.exists():
         raise FileNotFoundError(f"Checkpoint not found: {ckpt_path}")
 
@@ -337,7 +338,7 @@ def print_table(results: list[tuple[str, dict, dict]]) -> None:
 # Main
 # ---------------------------------------------------------------------------
 
-def main(feature_set: str = "full") -> None:
+def main(feature_set: str = "full", finetune_tag: str = "partial") -> None:
     torch.manual_seed(SEED)
     np.random.seed(SEED)
 
@@ -359,7 +360,8 @@ def main(feature_set: str = "full") -> None:
 
     # 1 — ABBI
     abbi_metrics, abbi_ci = evaluate_abbi(
-        sequences, x_clin, y, test_idx, device, feature_set=feature_set
+        sequences, x_clin, y, test_idx, device,
+        feature_set=feature_set, finetune_tag=finetune_tag,
     )
 
     # 2 — Clinical-only ablation
@@ -393,5 +395,7 @@ if __name__ == "__main__":
     parser.add_argument("--feature-set", choices=["full", "seq"], default="full",
                         help="'full' = all 21 annotation features; "
                              "'seq' = drop mol_csq columns (12 features).")
+    parser.add_argument("--finetune-tag", default="partial",
+                        help="Checkpoint suffix: 'partial' (frozen base) or 'unfreeze' (all layers).")
     args = parser.parse_args()
-    main(feature_set=args.feature_set)
+    main(feature_set=args.feature_set, finetune_tag=args.finetune_tag)

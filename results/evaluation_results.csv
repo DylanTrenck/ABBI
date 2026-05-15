@@ -3,3 +3,5 @@ timestamp,model,auc_roc,auc_roc_lo,auc_roc_hi,auprc,auprc_lo,auprc_hi,f1,f1_lo,f
 2026-05-14 11:48,ClinicalOnly,0.9949,0.991,0.9976,0.9986,0.9974,0.9994,0.9806,0.973,0.9874,0.9633,0.949,0.9758,0.9951,0.9838,1.0,941,ClinicalEncoder + ClassificationHead; no sequence
 2026-05-14 13:09,ABBI_seq,0.9498,0.9361,0.9627,0.9859,0.9815,0.9899,0.899,0.8814,0.9151,0.8476,0.821,0.872,0.8641,0.8141,0.9091,941,DNABERT-2 + ClinicalEncoder + CrossAttention; feature_set=seq
 2026-05-14 13:09,ClinicalOnly_seq,0.8715,0.8482,0.8948,0.9627,0.9519,0.9715,0.8624,0.842,0.8809,0.7714,0.7416,0.8014,0.9369,0.8991,0.9676,941,ClinicalEncoder + ClassificationHead; no sequence; feature_set=seq
+2026-05-14 15:06,ABBI_seq,0.8744,0.8522,0.8967,0.9645,0.9549,0.9724,0.8621,0.8421,0.8812,0.7701,0.7395,0.8,0.9417,0.9057,0.9705,941,DNABERT-2 + ClinicalEncoder + CrossAttention; feature_set=seq
+2026-05-14 15:06,ClinicalOnly_seq,0.8715,0.8482,0.8948,0.9627,0.9519,0.9715,0.8624,0.842,0.8809,0.7714,0.7416,0.8014,0.9369,0.8991,0.9676,941,ClinicalEncoder + ClassificationHead; no sequence; feature_set=seq

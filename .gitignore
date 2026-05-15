@@ -1,6 +1,6 @@
 # Raw data and model checkpoints — not tracked
 data/raw/
-models/
+/models/
 
 # Large derived files — regenerate with src/data/kmer.py
 data/processed/X_kmer.npy

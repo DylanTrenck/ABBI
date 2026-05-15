@@ -13,6 +13,7 @@ CLINVAR_BRCA1 = RAW_DIR / "clinvar_BRCA1.txt"
 CLINVAR_BRCA2 = RAW_DIR / "clinvar_BRCA2.txt"
 BRCA1_REF = RAW_DIR / "brca1_reference.gb"
 BRCA2_REF = RAW_DIR / "brca2_reference.gb"
+SGE_BRCA1_RAW  = RAW_DIR / "findlay_brca1_sge.csv"   # Findlay 2018 SGE scores
 
 CLINVAR_CLEAN_PATH = PROCESSED_DIR / "clinvar_clean.csv"
 SEQUENCES_PATH = PROCESSED_DIR / "sequences.npy"
@@ -45,3 +46,7 @@ PATIENCE = 10           # early stopping on val AUC-ROC
 TRAIN_FRAC = 0.70
 VAL_FRAC = 0.15
 TEST_FRAC = 0.15
+
+# --- SGE functional model (Findlay 2018 regression) ---
+SGE_SPLITS_DIR = DATA_DIR / "sge_splits"
+SGE_MODEL_PATH = MODELS_DIR / "sge_regressor_best.pt"

@@ -51,8 +51,9 @@ np.random.seed(SEED)
 # Helpers
 # ---------------------------------------------------------------------------
 
-def load_model(device: torch.device, clin_input_dim: int) -> ABBIModel:
-    ckpt_path = MODELS_DIR / "abbi_best_seq.pt"
+def load_model(device: torch.device, clin_input_dim: int,
+               checkpoint: str = "abbi_best_seq_unfreeze.pt") -> ABBIModel:
+    ckpt_path = MODELS_DIR / checkpoint
     ckpt = torch.load(ckpt_path, map_location=device)
     model = ABBIModel(clin_input_dim=clin_input_dim)
     model.load_state_dict(ckpt["model_state"])

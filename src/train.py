@@ -167,7 +167,8 @@ def train(args: argparse.Namespace) -> None:
     # --- Training loop ---
     MODELS_DIR.mkdir(parents=True, exist_ok=True)
     best_auc, patience_counter = 0.0, 0
-    best_ckpt = MODELS_DIR / f"abbi_best_{args.feature_set}.pt"
+    finetune_tag = "unfreeze" if args.unfreeze_all else "partial"
+    best_ckpt = MODELS_DIR / f"abbi_best_{args.feature_set}_{finetune_tag}.pt"
 
     print(f"\n{'Epoch':>5}  {'Train Loss':>10}  {'Val Loss':>8}  "
           f"{'Val AUC':>8}  {'Best AUC':>8}")

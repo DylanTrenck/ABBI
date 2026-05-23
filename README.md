@@ -40,7 +40,7 @@ fail to generalise to VUS: they achieve Spearman ρ ≈ −0.06 on SGE functiona
 Requires Python ≥ 3.10.
 
 ```bash
-git clone https://github.com/<your-handle>/ABBI.git
+git clone https://github.com/dylantrenck/ABBI.git
 cd ABBI
 python -m venv .venv
 # macOS/Linux

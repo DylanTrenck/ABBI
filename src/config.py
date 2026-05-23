@@ -50,3 +50,8 @@ TEST_FRAC = 0.15
 # --- SGE functional model (Findlay 2018 regression) ---
 SGE_SPLITS_DIR = DATA_DIR / "sge_splits"
 SGE_MODEL_PATH = MODELS_DIR / "sge_regressor_best.pt"
+
+# --- BRCA2 SGE functional model (MAVE-DB / Starita lab) ---
+SGE_BRCA2_RAW        = RAW_DIR / "brca2_sge.csv"
+BRCA2_SGE_SPLITS_DIR = DATA_DIR / "brca2_sge_splits"
+BRCA2_SGE_MODEL_PATH = MODELS_DIR / "sge_regressor_brca2_best.pt"

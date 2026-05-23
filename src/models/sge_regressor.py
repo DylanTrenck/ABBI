@@ -110,13 +110,13 @@ def consequence_onehot(csq: str) -> list[float]:
     return vec
 
 
-def build_tabular(row: dict) -> list[float]:
+def build_tabular(row: dict, aa_len: float = _BRCA1_AA_LEN) -> list[float]:
     """Build the 50-d tabular feature vector for one variant row."""
     ref_aa = str(row.get("aa_ref",  "") or "")
     alt_aa = str(row.get("aa_alt",  "") or "")
     csq    = str(row.get("consequence", "") or "")
 
-    aa_pos_norm  = _safe_float(row.get("aa_pos"))   / _BRCA1_AA_LEN
+    aa_pos_norm  = _safe_float(row.get("aa_pos"))   / aa_len
     phylop_norm  = _safe_float(row.get("phyloP (mammalian)"), 0.0) / _PHYLOP_SCALE
     agvgd_norm   = _safe_float(row.get("aGVGD.diff"), 0.0) / _AGVGD_SCALE
 

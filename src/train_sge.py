@@ -29,9 +29,12 @@ from torch.utils.data import DataLoader, Dataset
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from src.config import (
+    BRCA2_SGE_MODEL_PATH, BRCA2_SGE_SPLITS_DIR,
     PATIENCE, RESULTS_DIR, SEED, SGE_MODEL_PATH, SGE_SPLITS_DIR,
 )
-from src.models.sge_regressor import SGERegressor, build_tabular
+from src.models.sge_regressor import SGERegressor, _BRCA1_AA_LEN, build_tabular
+
+_BRCA2_AA_LEN = 3418.0
 
 TRAIN_LOG = RESULTS_DIR / "sge_training_results.csv"
 LOG_COLS   = ["timestamp", "epoch", "train_loss", "val_loss", "val_rho", "best_rho"]
@@ -42,12 +45,12 @@ LOG_COLS   = ["timestamp", "epoch", "train_loss", "val_loss", "val_rho", "best_r
 # ---------------------------------------------------------------------------
 
 class SGEDataset(Dataset):
-    def __init__(self, df: pd.DataFrame):
+    def __init__(self, df: pd.DataFrame, aa_len: float = _BRCA1_AA_LEN):
         valid        = df["score"].notna()
         self.df      = df[valid].reset_index(drop=True)
         self.seqs    = self.df["sequence"].fillna("N" * 100).tolist()
         self.scores  = torch.tensor(self.df["score"].values, dtype=torch.float32)
-        tab = [build_tabular(row) for _, row in self.df.iterrows()]
+        tab = [build_tabular(row, aa_len=aa_len) for _, row in self.df.iterrows()]
         self.tabular = torch.nan_to_num(
             torch.tensor(tab, dtype=torch.float32), nan=0.0, posinf=0.0, neginf=0.0
         )
@@ -130,16 +133,30 @@ def train(args: argparse.Namespace) -> None:
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Device: {device}")
 
+    # Gene-specific paths and protein length
+    if args.gene == "brca2":
+        splits_dir = BRCA2_SGE_SPLITS_DIR
+        model_path = BRCA2_SGE_MODEL_PATH
+        aa_len     = _BRCA2_AA_LEN
+        prefix     = "brca2_sge"
+        prep_cmd   = "src/data/prepare_brca2_sge_splits.py"
+    else:
+        splits_dir = SGE_SPLITS_DIR
+        model_path = SGE_MODEL_PATH
+        aa_len     = _BRCA1_AA_LEN
+        prefix     = "sge"
+        prep_cmd   = "src/data/prepare_sge_splits.py"
+
     for split in ("train", "val"):
-        path = SGE_SPLITS_DIR / f"sge_{split}.csv"
+        path = splits_dir / f"{prefix}_{split}.csv"
         if not path.exists():
-            print(f"Split not found: {path}  ->  run src/data/prepare_sge_splits.py")
+            print(f"Split not found: {path}  ->  run {prep_cmd}")
             sys.exit(1)
 
-    train_df = pd.read_csv(SGE_SPLITS_DIR / "sge_train.csv")
-    val_df   = pd.read_csv(SGE_SPLITS_DIR / "sge_val.csv")
-    train_ds = SGEDataset(train_df)
-    val_ds   = SGEDataset(val_df)
+    train_df = pd.read_csv(splits_dir / f"{prefix}_train.csv")
+    val_df   = pd.read_csv(splits_dir / f"{prefix}_val.csv")
+    train_ds = SGEDataset(train_df, aa_len=aa_len)
+    val_ds   = SGEDataset(val_df, aa_len=aa_len)
     train_loader = DataLoader(train_ds, batch_size=args.batch_size,
                               shuffle=True,  collate_fn=collate)
     val_loader   = DataLoader(val_ds,   batch_size=args.batch_size,
@@ -169,7 +186,7 @@ def train(args: argparse.Namespace) -> None:
     optimizer = AdamW(param_groups, weight_decay=1e-2)
     scheduler = CosineAnnealingLR(optimizer, T_max=args.epochs)
 
-    SGE_MODEL_PATH.parent.mkdir(parents=True, exist_ok=True)
+    model_path.parent.mkdir(parents=True, exist_ok=True)
     best_rho, patience_counter = -1.0, 0
 
     print(f"\n{'Epoch':>5}  {'Train Loss':>10}  {'Val Loss':>9}  "
@@ -200,8 +217,9 @@ def train(args: argparse.Namespace) -> None:
             patience_counter = 0
             torch.save({"epoch": epoch, "val_rho": val_rho,
                         "model_state": model.state_dict(),
-                        "unfreeze_last": args.unfreeze_last},
-                       SGE_MODEL_PATH)
+                        "unfreeze_last": args.unfreeze_last,
+                        "gene": args.gene},
+                       model_path)
         else:
             patience_counter += 1
 
@@ -217,11 +235,13 @@ def train(args: argparse.Namespace) -> None:
             break
 
     print(f"\nTraining complete. Best val Spearman rho: {best_rho:.4f}")
-    print(f"Best checkpoint saved -> {SGE_MODEL_PATH}")
+    print(f"Best checkpoint saved -> {model_path}")
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
+    parser.add_argument("--gene",          choices=["brca1", "brca2"], default="brca1",
+                        help="Which gene's SGE dataset to train on.")
     parser.add_argument("--epochs",         type=int,   default=150)
     parser.add_argument("--batch-size",     type=int,   default=64)
     parser.add_argument("--lr",             type=float, default=1e-4)

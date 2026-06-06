@@ -50,8 +50,10 @@ continuous SGE score via a lightweight MLP head.
 Critically, we evaluate under an exon-stratified protocol: test exons are never seen
 during training, providing an honest measure of generalisation.
 \abbi{} achieves ROC AUC 0.868 (BRCA1 exons 22--23) and 0.838 (BRCA2 exons 24--26)
-when distinguishing loss-of-function from functional variants on held-out exons, matching
-or exceeding CADD, SIFT, PolyPhen-2, and phyloP on BRCA1.
+when distinguishing loss-of-function from functional variants on held-out exons.
+On BRCA1, \abbi{} outperforms CADD, SIFT, PolyPhen-2, and phyloP; on BRCA2, \abbi{}
+remains competitive with all baselines except CADD (AUC 0.894), which benefits from
+substantially larger and more diverse training data.
 Phylogenetic conservation (phyloP 100-way) is the single most informative feature,
 and unfreezing the language model yields no gain on unseen exons, suggesting that
 data diversity rather than sequence representation is the current bottleneck.
@@ -112,8 +114,8 @@ SGE data.
 Our key contributions are:
 \begin{enumerate}
   \item A model architecture that fuses a frozen DNA language model with interpretable
-        tabular features and achieves state-of-the-art per-exon generalisation on both
-        BRCA1 and BRCA2.
+        tabular features and achieves strong per-exon generalisation on BRCA1 and
+        competitive performance on BRCA2.
   \item An exon-stratified evaluation protocol that provides a rigorous, non-circular
         assessment of functional impact prediction.
   \item An end-to-end annotation pipeline (Ensembl VEP, UCSC phyloP, Grantham distance)
@@ -223,6 +225,60 @@ passed through a three-layer MLP with architecture
 818 $\to$ 256 (LayerNorm, GELU, Dropout 0.2) $\to$ 64 (GELU, Dropout 0.2) $\to$ 1.
 The output is an unconstrained scalar representing the predicted SGE score.
 
+\begin{figure}[ht]
+\centering
+\begin{tikzpicture}[
+  font=\small,
+  seqbox/.style={draw, rounded corners=3pt, minimum width=3.8cm, minimum height=0.75cm,
+                 align=center, fill=blue!12, draw=blue!50, thick},
+  tabbox/.style={draw, rounded corners=3pt, text width=3.8cm, inner sep=7pt,
+                 align=center, fill=orange!12, draw=orange!50, thick},
+  catbox/.style={draw, rounded corners=3pt, minimum width=6.2cm, minimum height=0.75cm,
+                 align=center, fill=gray!12, draw=gray!50, thick},
+  mlpbox/.style={draw, rounded corners=3pt, minimum width=6.2cm, minimum height=0.75cm,
+                 align=center, fill=teal!12, draw=teal!50, thick},
+  outbox/.style={draw, rounded corners=3pt, minimum width=3.8cm, minimum height=0.75cm,
+                 align=center, fill=green!12, draw=green!50, thick},
+  arrow/.style={-{Stealth[length=5pt]}, thick},
+]
+\node[seqbox] (seq)     at (0,    0.0) {DNA sequence \\ (100\,bp window)};
+\node[seqbox] (dnabert) at (0,   -1.8) {DNABERT-2 \\ (frozen, 117M params)};
+\node[seqbox] (cls)     at (0,   -3.5) {CLS embedding \\ (768-d)};
+\node[tabbox] (tab) at (6.5, -1.75) {%
+  \textbf{Tabular features (50-d)}\\[4pt]
+  ref/alt AA one-hot (40-d)\\[1pt]
+  physchem $\Delta$ (3-d)\\[1pt]
+  consequence (4-d)\\[1pt]
+  pos + phyloP + Grantham (3-d)%
+};
+\node[catbox] (cat)  at (3.25, -5.4) {Concatenation \quad (818-d)};
+\node[mlpbox] (mlp1) at (3.25, -6.8) {Linear $818{\to}256$ + LayerNorm + GELU + Dropout};
+\node[mlpbox] (mlp2) at (3.25, -8.0) {Linear $256{\to}64$ + GELU + Dropout};
+\node[mlpbox] (mlp3) at (3.25, -9.0) {Linear $64{\to}1$};
+\node[outbox] (out)  at (3.25, -10.3) {Predicted SGE score};
+\draw[arrow] (seq)       -- (dnabert);
+\draw[arrow] (dnabert)   -- (cls);
+\draw[arrow] (cls)       -- (cat);
+\draw[arrow] (tab.south) -- (cat);
+\draw[arrow] (cat)       -- (mlp1);
+\draw[arrow] (mlp1)      -- (mlp2);
+\draw[arrow] (mlp2)      -- (mlp3);
+\draw[arrow] (mlp3)      -- (out);
+\node[font=\scriptsize, align=left, text=gray!80, right=1.2cm of out]
+  {Training loss:\\[2pt]
+   $0.4\,\mathcal{L}_{\text{MSE}} + 0.6\,(1 - r_{\text{Pearson}})$};
+\end{tikzpicture}
+\caption{\textbf{\abbi{} architecture.}
+  A frozen DNABERT-2 encoder converts the 100 bp variant-centred sequence to a
+  768-d CLS embedding.
+  A 50-d tabular branch encodes amino-acid properties, consequence, normalised
+  position, phyloP conservation, and Grantham distance.
+  Both branches are concatenated and passed through a three-layer MLP head to
+  produce a scalar SGE score prediction.
+  Only the MLP head (226{,}305 parameters) is trained; DNABERT-2 is frozen.}
+\label{fig:architecture}
+\end{figure}
+
 \subsection{Training}
 
 The combined loss
@@ -301,6 +357,24 @@ training variants): the language model's pre-trained representations already cap
 relevant sequence signals, and partial fine-tuning overfits to the training exon vocabulary.
 All reported results use the fully frozen encoder.
 
+\begin{figure}[ht]
+\centering
+\begin{subfigure}[b]{0.48\textwidth}
+  \includegraphics[width=\textwidth]{figures/sge_regressor_scatter.png}
+  \caption{BRCA1 scatter: predicted vs actual SGE score.
+           Spearman $\rho = 0.421$, Pearson $r = 0.530$.}
+  \label{fig:brca1_scatter}
+\end{subfigure}
+\hfill
+\begin{subfigure}[b]{0.48\textwidth}
+  \includegraphics[width=\textwidth]{figures/sge_regressor_boxplot.png}
+  \caption{BRCA1 predicted score by functional class on test exons X22--X23.}
+  \label{fig:brca1_box}
+\end{subfigure}
+\caption{\textbf{BRCA1 SGE regressor performance on held-out test exons (X22--X23).}}
+\label{fig:brca1_results}
+\end{figure}
+
 \subsection{BRCA2: generalisation to held-out exons 24--26}
 
 On the BRCA2 test exons (E24--E26, $n = 1{,}275$; 213 LOF, 557 INT, 505 FUNC),
@@ -318,6 +392,24 @@ define clean LOF and FUNC labels ($\mu - 2.5\sigma$ versus $\mu - 1.5\sigma$).
 Additionally, the BRCA2 training set spans seven consecutive exons (E15--E21) while
 the test exons E24--E26 reside near the 3$'$ end of the coding sequence, representing
 a more challenging distributional shift.
+
+\begin{figure}[ht]
+\centering
+\begin{subfigure}[b]{0.48\textwidth}
+  \includegraphics[width=\textwidth]{figures/sge_regressor_scatter_brca2.png}
+  \caption{BRCA2 scatter: predicted vs actual SGE score.
+           Spearman $\rho = 0.317$, Pearson $r = 0.627$.}
+  \label{fig:brca2_scatter}
+\end{subfigure}
+\hfill
+\begin{subfigure}[b]{0.48\textwidth}
+  \includegraphics[width=\textwidth]{figures/sge_regressor_boxplot_brca2.png}
+  \caption{BRCA2 predicted score by functional class on test exons E24--E26.}
+  \label{fig:brca2_box}
+\end{subfigure}
+\caption{\textbf{BRCA2 SGE regressor performance on held-out test exons (E24--E26).}}
+\label{fig:brca2_results}
+\end{figure}
 
 \subsection{Comparison with in silico baselines}
 
@@ -359,6 +451,18 @@ PolyPhen-2 and SIFT are limited to missense variants and rank below phyloP and \
 on both genes.
 
 Figure~\ref{fig:baselines} shows the comparison visually for both genes.
+
+\begin{figure}[ht]
+\centering
+\includegraphics[width=0.75\textwidth]{figures/baseline_comparison.png}
+\caption{\textbf{Baseline comparison.}
+  ROC AUC (LOF vs FUNC) on held-out test exons for \abbi{} and five standard in silico
+  predictors.
+  \abbi{} leads on BRCA1; CADD leads on BRCA2, likely reflecting CADD's larger and more
+  diverse training data.
+  PolyPhen-2 and SIFT are evaluated on missense variants only.}
+\label{fig:baselines}
+\end{figure}
 
 \subsection{Summary statistics and model checkpoints}
 
@@ -407,7 +511,7 @@ This is not a flaw of the architectural approach but a data limitation.
 As additional SGE datasets become available (for BRCA2 exons 1--14 and other cancer
 genes such as \emph{TP53} and \emph{PTEN}), we expect \abbi{}'s performance to close
 or surpass this gap.
-The BRCA1 result ($+5.6$ AUC points over CADD) illustrates what is achievable with
+The BRCA1 result ($+6.0$ AUC points over CADD) illustrates what is achievable with
 a gene that has denser SGE coverage.
 
 \paragraph{The dominant role of conservation.}
@@ -469,7 +573,7 @@ All code and pre-trained checkpoints are publicly available.
 \section*{Data and Code Availability}
 
 All code, annotation pipelines, and pre-trained model checkpoints are available at
-\url{https://github.com/[TODO]/ABBI} under the MIT licence.
+\url{https://github.com/DylanTrenck/ABBI} under the MIT licence.
 
 BRCA1 SGE data: GEO accession GSE117159~\citep{findlay2018}.
 
@@ -488,131 +592,5 @@ MAVE-DB for maintaining freely accessible APIs.
 % ─────────────────────────────────────────────────────────────────────────────
 \bibliographystyle{plainnat}
 \bibliography{references}
-
-% ─────────────────────────────────────────────────────────────────────────────
-\newpage
-\appendix
-
-\section*{Figures}
-
-\begin{figure}[ht]
-\centering
-\begin{tikzpicture}[
-  font=\small,
-  seqbox/.style={draw, rounded corners=3pt, minimum width=3.8cm, minimum height=0.75cm,
-                 align=center, fill=blue!12, draw=blue!50, thick},
-  tabbox/.style={draw, rounded corners=3pt, text width=3.8cm, inner sep=7pt,
-                 align=center, fill=orange!12, draw=orange!50, thick},
-  catbox/.style={draw, rounded corners=3pt, minimum width=6.2cm, minimum height=0.75cm,
-                 align=center, fill=gray!12, draw=gray!50, thick},
-  mlpbox/.style={draw, rounded corners=3pt, minimum width=6.2cm, minimum height=0.75cm,
-                 align=center, fill=teal!12, draw=teal!50, thick},
-  outbox/.style={draw, rounded corners=3pt, minimum width=3.8cm, minimum height=0.75cm,
-                 align=center, fill=green!12, draw=green!50, thick},
-  arrow/.style={-{Stealth[length=5pt]}, thick},
-]
-
-%% ── Sequence branch (left column, x = 0) ─────────────────────────────────
-\node[seqbox] (seq)     at (0,    0.0) {DNA sequence \\ (100\,bp window)};
-\node[seqbox] (dnabert) at (0,   -1.8) {DNABERT-2 \\ (frozen, 117M params)};
-\node[seqbox] (cls)     at (0,   -3.5) {CLS embedding \\ (768-d)};
-
-%% ── Tabular branch (right column, x = 6.5) ───────────────────────────────
-\node[tabbox] (tab) at (6.5, -1.75) {%
-  \textbf{Tabular features (50-d)}\\[4pt]
-  ref/alt AA one-hot (40-d)\\[1pt]
-  physchem $\Delta$ (3-d)\\[1pt]
-  consequence (4-d)\\[1pt]
-  pos + phyloP + Grantham (3-d)%
-};
-
-%% ── Concatenation (centre, x = 3.25) ─────────────────────────────────────
-\node[catbox] (cat)  at (3.25, -5.4) {Concatenation \quad (818-d)};
-
-%% ── MLP head ──────────────────────────────────────────────────────────────
-\node[mlpbox] (mlp1) at (3.25, -6.8) {Linear $818{\to}256$ + LayerNorm + GELU + Dropout};
-\node[mlpbox] (mlp2) at (3.25, -8.0) {Linear $256{\to}64$ + GELU + Dropout};
-\node[mlpbox] (mlp3) at (3.25, -9.0) {Linear $64{\to}1$};
-
-%% ── Output ────────────────────────────────────────────────────────────────
-\node[outbox] (out)  at (3.25, -10.3) {Predicted SGE score};
-
-%% ── Arrows ────────────────────────────────────────────────────────────────
-\draw[arrow] (seq)       -- (dnabert);
-\draw[arrow] (dnabert)   -- (cls);
-\draw[arrow] (cls)       -- (cat);
-\draw[arrow] (tab.south) -- (cat);
-\draw[arrow] (cat)       -- (mlp1);
-\draw[arrow] (mlp1)      -- (mlp2);
-\draw[arrow] (mlp2)      -- (mlp3);
-\draw[arrow] (mlp3)      -- (out);
-
-%% ── Training loss note (anchored right of output) ─────────────────────────
-\node[font=\scriptsize, align=left, text=gray!80,
-      right=1.2cm of out]
-  {Training loss:\\[2pt]
-   $0.4\,\mathcal{L}_{\text{MSE}} + 0.6\,(1 - r_{\text{Pearson}})$};
-
-\end{tikzpicture}
-\caption{\textbf{\abbi{} architecture.}
-  A frozen DNABERT-2 encoder converts the 100 bp variant-centred sequence to a
-  768-d CLS embedding.
-  A 50-d tabular branch encodes amino-acid properties, consequence, normalised
-  position, phyloP conservation, and Grantham distance.
-  Both branches are concatenated and passed through a three-layer MLP head to
-  produce a scalar SGE score prediction.
-  Only the MLP head (226{,}305 parameters) is trained; DNABERT-2 is frozen.}
-\label{fig:architecture}
-\end{figure}
-
-\clearpage
-
-\begin{figure}[ht]
-\centering
-\begin{subfigure}[b]{0.48\textwidth}
-  \includegraphics[width=\textwidth]{figures/sge_regressor_scatter.png}
-  \caption{BRCA1 scatter: predicted vs actual SGE score.
-           Spearman $\rho = 0.421$, Pearson $r = 0.530$.}
-  \label{fig:brca1_scatter}
-\end{subfigure}
-\hfill
-\begin{subfigure}[b]{0.48\textwidth}
-  \includegraphics[width=\textwidth]{figures/sge_regressor_boxplot.png}
-  \caption{BRCA1 predicted score by functional class on test exons X22--X23.}
-  \label{fig:brca1_box}
-\end{subfigure}
-\caption{\textbf{BRCA1 SGE regressor performance on held-out test exons (X22--X23).}}
-\label{fig:brca1_results}
-\end{figure}
-
-\begin{figure}[ht]
-\centering
-\begin{subfigure}[b]{0.48\textwidth}
-  \includegraphics[width=\textwidth]{figures/sge_regressor_scatter_brca2.png}
-  \caption{BRCA2 scatter: predicted vs actual SGE score.
-           Spearman $\rho = 0.317$, Pearson $r = 0.627$.}
-  \label{fig:brca2_scatter}
-\end{subfigure}
-\hfill
-\begin{subfigure}[b]{0.48\textwidth}
-  \includegraphics[width=\textwidth]{figures/sge_regressor_boxplot_brca2.png}
-  \caption{BRCA2 predicted score by functional class on test exons E24--E26.}
-  \label{fig:brca2_box}
-\end{subfigure}
-\caption{\textbf{BRCA2 SGE regressor performance on held-out test exons (E24--E26).}}
-\label{fig:brca2_results}
-\end{figure}
-
-\begin{figure}[ht]
-\centering
-\includegraphics[width=0.75\textwidth]{figures/baseline_comparison.png}
-\caption{\textbf{Baseline comparison.}
-  ROC AUC (LOF vs FUNC) on held-out test exons for \abbi{} and five standard in silico
-  predictors.
-  \abbi{} leads on BRCA1; CADD leads on BRCA2, likely reflecting CADD's larger and more
-  diverse training data.
-  PolyPhen-2 and SIFT are evaluated on missense variants only.}
-\label{fig:baselines}
-\end{figure}
 
 \end{document}

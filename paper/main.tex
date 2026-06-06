@@ -499,15 +499,15 @@ MAVE-DB for maintaining freely accessible APIs.
 \centering
 \begin{tikzpicture}[
   font=\small,
-  seqbox/.style={draw, rounded corners=3pt, minimum width=4.0cm, minimum height=0.75cm,
+  seqbox/.style={draw, rounded corners=3pt, minimum width=3.8cm, minimum height=0.75cm,
                  align=center, fill=blue!12, draw=blue!50, thick},
-  tabbox/.style={draw, rounded corners=3pt, text width=4.2cm, inner sep=7pt,
-                 align=left, fill=orange!12, draw=orange!50, thick},
-  catbox/.style={draw, rounded corners=3pt, minimum width=6.8cm, minimum height=0.75cm,
+  tabbox/.style={draw, rounded corners=3pt, text width=3.8cm, inner sep=7pt,
+                 align=center, fill=orange!12, draw=orange!50, thick},
+  catbox/.style={draw, rounded corners=3pt, minimum width=6.2cm, minimum height=0.75cm,
                  align=center, fill=gray!12, draw=gray!50, thick},
-  mlpbox/.style={draw, rounded corners=3pt, minimum width=6.8cm, minimum height=0.75cm,
+  mlpbox/.style={draw, rounded corners=3pt, minimum width=6.2cm, minimum height=0.75cm,
                  align=center, fill=teal!12, draw=teal!50, thick},
-  outbox/.style={draw, rounded corners=3pt, minimum width=4.0cm, minimum height=0.75cm,
+  outbox/.style={draw, rounded corners=3pt, minimum width=3.8cm, minimum height=0.75cm,
                  align=center, fill=green!12, draw=green!50, thick},
   arrow/.style={-{Stealth[length=5pt]}, thick},
 ]
@@ -517,25 +517,25 @@ MAVE-DB for maintaining freely accessible APIs.
 \node[seqbox] (dnabert) at (0,   -1.8) {DNABERT-2 \\ (frozen, 117M params)};
 \node[seqbox] (cls)     at (0,   -3.5) {CLS embedding \\ (768-d)};
 
-%% ── Tabular branch (right column, x = 7.5) ───────────────────────────────
-\node[tabbox] (tab) at (7.5, -1.75) {%
+%% ── Tabular branch (right column, x = 6.5) ───────────────────────────────
+\node[tabbox] (tab) at (6.5, -1.75) {%
   \textbf{Tabular features (50-d)}\\[4pt]
-  \small ref/alt AA one-hot \quad (40-d)\\[1pt]
-  \small physchem $\Delta$ \quad\quad\quad\;\; (3-d)\\[1pt]
-  \small consequence \quad\quad\quad\;\;\; (4-d)\\[1pt]
-  \small pos + phyloP + Grantham (3-d)%
+  ref/alt AA one-hot (40-d)\\[1pt]
+  physchem $\Delta$ (3-d)\\[1pt]
+  consequence (4-d)\\[1pt]
+  pos + phyloP + Grantham (3-d)%
 };
 
-%% ── Concatenation (centre, x = 3.75) ─────────────────────────────────────
-\node[catbox] (cat)  at (3.75, -5.4) {Concatenation \quad (818-d)};
+%% ── Concatenation (centre, x = 3.25) ─────────────────────────────────────
+\node[catbox] (cat)  at (3.25, -5.4) {Concatenation \quad (818-d)};
 
 %% ── MLP head ──────────────────────────────────────────────────────────────
-\node[mlpbox] (mlp1) at (3.75, -6.8) {Linear $818{\to}256$ + LayerNorm + GELU + Dropout};
-\node[mlpbox] (mlp2) at (3.75, -8.0) {Linear $256{\to}64$ + GELU + Dropout};
-\node[mlpbox] (mlp3) at (3.75, -9.0) {Linear $64{\to}1$};
+\node[mlpbox] (mlp1) at (3.25, -6.8) {Linear $818{\to}256$ + LayerNorm + GELU + Dropout};
+\node[mlpbox] (mlp2) at (3.25, -8.0) {Linear $256{\to}64$ + GELU + Dropout};
+\node[mlpbox] (mlp3) at (3.25, -9.0) {Linear $64{\to}1$};
 
 %% ── Output ────────────────────────────────────────────────────────────────
-\node[outbox] (out)  at (3.75, -10.3) {Predicted SGE score};
+\node[outbox] (out)  at (3.25, -10.3) {Predicted SGE score};
 
 %% ── Arrows ────────────────────────────────────────────────────────────────
 \draw[arrow] (seq)       -- (dnabert);

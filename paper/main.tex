@@ -40,7 +40,7 @@
 Variants of uncertain significance (VUS) account for the majority of BRCA1 and BRCA2
 observations in clinical genetic databases, yet current in silico predictors trained on
 ClinVar pathogenicity labels perform near-randomly when evaluated against functional
-assay readouts (Spearman $\rho \approx -0.06$).
+assay readouts.
 We present \abbi{} (Attention-Based BRCA Interpreter), an open-source model trained
 directly on saturation genome editing (SGE) functional scores from Findlay et al. (BRCA1,
 3{,}893 variants) and MAVE-DB (BRCA2, 6{,}959 variants).
@@ -83,7 +83,7 @@ Saturation genome editing (SGE) provides a scalable functional ground truth.
 Findlay et al. introduced the approach for BRCA1: by introducing all possible single
 nucleotide variants across each exon in HAP1 cells and measuring survival relative to
 synonymous controls, they produced experimentally validated function scores for 3{,}893
-variants spanning exons 2--23~\citep{findlay2018}.
+variants spanning exons 2--5 and 15--23~\citep{findlay2018}.
 An analogous HAP1-based assay now covers exons 15--26 of BRCA2~\citep{huang2025},
 with data deposited in MAVE-DB~\citep{mavedb}.
 These datasets are, to date, the highest-quality functional maps of these clinically
@@ -95,8 +95,7 @@ PolyPhen-2~\citep{polyphen2}) were trained or calibrated on ClinVar classificati
 which themselves depend heavily on co-segregation and population frequency evidence that
 is scarce precisely for VUS.
 When we evaluate a standard sequence-annotation classifier trained on ClinVar labels
-against SGE scores on the same held-out exons, we obtain Spearman
-$\rho \approx -0.06$, essentially no predictive signal.
+against SGE scores on the same held-out exons, we obtain essentially no predictive signal.
 This circularity (using clinically interpreted labels to predict functional
 outcomes) limits utility for novel VUS.
 
@@ -135,17 +134,18 @@ Our key contributions are:
 \paragraph{BRCA1 SGE (Findlay 2018).}
 We downloaded the supplementary data from Findlay et al.~\citep{findlay2018}
 (GEO accession GSE117159), which reports mean function scores for 3{,}893 single
-nucleotide variants (SNVs) across exons 2--23 of \emph{BRCA1}
+nucleotide variants (SNVs) across 13 exonic regions (exons 2--5 and 15--23) of \emph{BRCA1}
 (transcript ENST00000357654).
 Function scores are the log$_2$ ratio of edited-cell frequency relative to synonymous
 controls at day 11; higher scores indicate greater cellular fitness (functional variant).
 
 \paragraph{BRCA2 SGE (MAVE-DB).}
 We downloaded the HAP1-based saturation genome editing dataset for \emph{BRCA2}
-(MAVE-DB accession \texttt{urn:mavedb:00001225-a-1}), comprising 6{,}959 SNVs spanning
-exons 15--26 (ENST00000380152.8).
-Scores represent the log-scaled functional readout from the same HAP1 cell
-survival assay used for BRCA1.
+(MAVE-DB accession \texttt{urn:mavedb:00001225-a-1}), comprising 6{,}959 SNVs spanning exons 15--26 (ENST00000380152.8);
+201 variants lacking exon assignments in the MAVE-DB download were excluded,
+leaving 6{,}758 for modelling.
+Scores represent the log-scaled HDR (homology-directed repair) efficiency
+from this HAP1-based SGE assay.
 
 \paragraph{Function class labels.}
 Binary function classes (LOF, FUNC, INT) were assigned relative to the synonymous

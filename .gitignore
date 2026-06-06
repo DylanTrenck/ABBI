@@ -16,7 +16,7 @@ results/
 !results/.gitkeep
 !results/figures/.gitkeep
 
-# ── Claude Code assistant files ───────────────────────────────────────────────
+# ── Local assistant files ─────────────────────────────────────────────────────
 .claude/
 
 # Python
